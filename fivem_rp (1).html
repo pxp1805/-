@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiveM 스토리RP 통합 법률 계산기</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --border-color: #334155;
+            --danger-color: #ef4444;
+            --success-color: #34d399;
+            --warning-color: #f59e0b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #60a5fa;
+            font-size: 2rem;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 950px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .category-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .category-box h3 {
+            margin-top: 0;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            color: #93c5fd;
+            font-size: 1.15rem;
+        }
+        .crime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 10px;
+        }
+        .crime-item {
+            background-color: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .crime-item:hover {
+            border-color: var(--accent-color);
+            background-color: #1e3a8a;
+        }
+        .crime-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .crime-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .crime-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .crime-info {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        /* 결과 패널 스타일 */
+        .result-panel {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .result-panel h2 {
+            margin-top: 0;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            font-size: 1.05rem;
+            align-items: center;
+        }
+        .result-value {
+            font-weight: bold;
+            color: #60a5fa;
+            font-size: 1.15rem;
+        }
+        .warning-text {
+            color: var(--danger-color);
+            font-size: 0.82rem;
+            margin-top: 5px;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px dashed var(--danger-color);
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            transition: background 0.2s;
+        }
+        .btn-reset {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        .btn-reset:hover {
+            background-color: #dc2626;
+        }
+        .btn-copy {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        .btn-copy:hover {
+            background-color: var(--accent-hover);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚔 FiveM 스토리RP 통합 법률 계산기</h1>
+    
+    <div class="main-layout">
+        <!-- 죄목 선택 영역 -->
+        <div id="crime-sections"></div>
+
+        <!-- 결과 출력 영역 -->
+        <div class="result-panel">
+            <h2>⚖️ 최종 처벌 내역</h2>
+            <div class="result-row">
+                <span>총 벌금:</span>
+                <span class="result-value" id="total-fine">0 원</span>
+            </div>
+            
+            <div class="result-row" style="background: rgba(245, 158, 11, 0.1); padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--warning-color);">
+                <span style="font-size: 0.95rem; color: #fcd34d;">공통계좌 입금 (20%):</span>
+                <span class="result-value" id="common-account" style="color: #f59e0b;">0 원</span>
+            </div>
+
+            <div class="result-row">
+                <span>총 구금 시간:</span>
+                <span class="result-value" id="total-jail" style="color: #fbbf24;">0 분</span>
+            </div>
+            <div class="warning-text" id="jail-warning" style="display:none;">※ 일반 범죄 최종 구금시간은 최대 180분 이내로 제한됩니다.</div>
+            
+            <div class="result-row" style="border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <span>총 보석금:</span>
+                <span class="result-value" id="total-bail" style="color: var(--success-color);">0 원</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748b; text-align: right; margin-top: -10px; margin-bottom: 10px;">(구금 1분당 1,000만 원)</div>
+
+            <div class="btn-group">
+                <button class="btn btn-copy" onclick="copyResult()">내역 복사</button>
+                <button class="btn btn-reset" onclick="resetSelection()">초기화</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 통합 법률 데이터 구조화
+    const crimeData = [
+        {
+            category: "도로교통법 (구금 제한 예외 적용)",
+            crimes: [
+                { name: "신호위반", fine: 10000000, jail: 0 },
+                { name: "중앙선 침범", fine: 10000000, jail: 0 },
+                { name: "역주행", fine: 10000000, jail: 5 },
+                { name: "불법 유턴", fine: 10000000, jail: 0 },
+                { name: "과속운전", fine: 10000000, jail: 0 },
+                { name: "난폭운전", fine: 30000000, jail: 10 },
+                { name: "보복운전", fine: 50000000, jail: 15 },
+                { name: "무면허 운전", fine: 50000000, jail: 5 },
+                { name: "뺑소니", fine: 40000000, jail: 25 },
+                { name: "교통사고", fine: 40000000, jail: 15 },
+                { name: "중상해 교통사고", fine: 50000000, jail: 30 },
+                { name: "사망 교통사고", fine: 60000000, jail: 60 },
+                { name: "차량을 이용한 위협", fine: 50000000, jail: 20 },
+                { name: "차량 고의충돌", fine: 70000000, jail: 30 },
+                { name: "소음공해", fine: 50000000, jail: 10 }
+            ]
+        },
+        {
+            category: "공무원 관련 범죄",
+            crimes: [
+                { name: "공무원 사칭", fine: 100000000, jail: 10 },
+                { name: "정차명령 불응", fine: 100000000, jail: 10 },
+                { name: "긴급차량 진로방해", fine: 100000000, jail: 5 },
+                { name: "공무집행방해", fine: 100000000, jail: 15 },
+                { name: "공무원 폭행", fine: 100000000, jail: 20 },
+                { name: "공무원 협박", fine: 100000000, jail: 10 },
+                { name: "공무원 차량파손", fine: 100000000, jail: 20 },
+                { name: "긴급차량 고의방해", fine: 100000000, jail: 10 },
+                { name: "공무원 중상해", fine: 200000000, jail: 30 },
+                { name: "공무원 살인미수", fine: 300000000, jail: 40 },
+                { name: "공무원 살인", fine: 400000000, jail: 45 },
+                { name: "공무원 모욕죄", fine: 100000000, jail: 45 },
+                { name: "공무원 사기죄", fine: 400000000, jail: 30 }
+            ]
+        },
+        {
+            category: "무기·강력범죄",
+            crimes: [
+                { name: "불법무기 소지", fine: 100000000, jail: 20 },
+                { name: "불법무기 사용", fine: 100000000, jail: 30 },
+                { name: "총기난사", fine: 50000000, jail: 50 },
+                { name: "살인", fine: 400000000, jail: 50 },
+                { name: "특수살인", fine: 500000000, jail: 60 },
+                { name: "납치·감금", fine: 200000000, jail: 40 },
+                { name: "강도", fine: 100000000, jail: 30 },
+                { name: "특수강도", fine: 200000000, jail: 40 }
+            ]
+        },
+        {
+            category: "마약 관련 범죄",
+            crimes: [
+                { name: "마약 소지", fine: 100000000, jail: 10 },
+                { name: "마약 유통", fine: 300000000, jail: 30 },
+                { name: "마약 제조", fine: 200000000, jail: 20 }
+            ]
+        },
+        {
+            category: "재산·경제범죄",
+            crimes: [
+                { name: "절도", fine: 50000000, jail: 5 },
+                { name: "차량 절도", fine: 50000000, jail: 20 },
+                { name: "사기", fine: 100000000, jail: 20 },
+                { name: "재물손괴", fine: 100000000, jail: 20 },
+                { name: "증거인멸", fine: 100000000, jail: 20 }
+            ]
+        },
+        {
+            category: "공직 관련 범죄",
+            crimes: [
+                { name: "뇌물공여", fine: 100000000, jail: 30 },
+                { name: "뇌물수수", fine: 200000000, jail: 40 },
+                { name: "직권남용", fine: 100000000, jail: 30 }
+            ]
+        },
+        {
+            category: "스토리RP 콘텐츠",
+            crimes: [
+                { name: "수배RP", fine: 2000000000, jail: 30 },
+                { name: "도주RP", fine: 2000000000, jail: 40 },
+                { name: "편의점RP", fine: 500000000, jail: 30 },
+                { name: "ATM RP", fine: 500000000, jail: 40 },
+                { name: "남부은행RP", fine: 2000000000, jail: 60 },
+                { name: "보석상RP", fine: 1000000000, jail: 60 },
+                { name: "빈집RP", fine: 1500000000, jail: 30 },
+                { name: "영장RP", fine: 2000000000, jail: 40 }
+            ]
+        }
+    ];
+
+    // 금액 단위를 보기 좋게 변환 (억, 만 원)
+    function formatMoney(amount) {
+        if (amount === 0) return "0 원";
+        let uk = Math.floor(amount / 100000000);
+        let man = Math.floor((amount % 100000000) / 10000);
+        let result = "";
+        if (uk > 0) result += uk + "억 ";
+        if (man > 0) result += man + "만 원";
+        return result.trim();
+    }
+
+    // UI 동적 렌더링
+    function renderCrimes() {
+        const container = document.getElementById("crime-sections");
+        let html = "";
+
+        crimeData.forEach((group, groupIdx) => {
+            html += `<div class="category-box">
+                        <h3>${group.category}</h3>
+                        <div class="crime-grid">`;
+            group.crimes.forEach((crime, crimeIdx) => {
+                let id = `crime_${groupIdx}_${crimeIdx}`;
+                html += `
+                    <div class="crime-item" onclick="toggleCheckbox('${id}')">
+                        <div class="crime-item-header">
+                            <input type="checkbox" id="${id}" data-name="${crime.name}" data-fine="${crime.fine}" data-jail="${crime.jail}" onchange="calculate()">
+                            <span class="crime-name">${crime.name}</span>
+                        </div>
+                        <div class="crime-info">
+                            <span>벌금: ${formatMoney(crime.fine)}</span>
+                            <span>구금: ${crime.jail}분</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    // 카드 전체 클릭 시 체크박스 토글
+    function toggleCheckbox(id) {
+        let cb = document.getElementById(id);
+        if (event.target.tagName !== 'INPUT') {
+            cb.checked = !cb.checked;
+            calculate();
+        }
+    }
+
+    // 실시간 계산 로직
+    function calculate() {
+        let checkboxes = document.querySelectorAll("input[type='checkbox']:checked");
+        let totalFine = 0;
+        let totalJail = 0;
+
+        checkboxes.forEach(cb => {
+            totalFine += parseInt(cb.getAttribute("data-fine"));
+            totalJail += parseInt(cb.getAttribute("data-jail"));
+        });
+
+        // 최고 벌금 제한 (50억 원)
+        if (totalFine > 5000000000) {
+            totalFine = 5000000000;
+        }
+
+        // 공통계좌 입금액 계산 (벌금의 20%)
+        let commonAccountAmount = Math.round(totalFine * 0.2);
+
+        // 일반 범죄 최종 구금시간 180분 제한 체크
+        let jailWarning = document.getElementById("jail-warning");
+        if (totalJail > 180) {
+            totalJail = 180;
+            jailWarning.style.display = "block";
+        } else {
+            jailWarning.style.display = "none";
+        }
+
+        // 보석금 계산 (구금 1분당 1,000만 원)
+        let totalBail = totalJail * 10000000;
+
+        // 결과 반영
+        document.getElementById("total-fine").innerText = formatMoney(totalFine);
+        document.getElementById("common-account").innerText = formatMoney(commonAccountAmount);
+        document.getElementById("total-jail").innerText = totalJail + " 분";
+        document.getElementById("total-bail").innerText = formatMoney(totalBail);
+    }
+
+    // 선택 초기화
+    function resetSelection() {
+        let checkboxes = document.querySelectorAll("input[type='checkbox']");
+        checkboxes.forEach(cb => cb.checked = false);
+        calculate();
+    }
+
+    // 결과 내역 복사하기 기능 (공통계좌 항목 포함)
+    function copyResult() {
+        let checkboxes = document.querySelectorAll("input[type='checkbox']:checked");
+        if (checkboxes.length === 0) {
+            alert("선택된 죄목이 없습니다.");
+            return;
+        }
+
+        let crimeList = [];
+        checkboxes.forEach(cb => {
+            crimeList.push(cb.getAttribute("data-name"));
+        });
+
+        let totalFine = document.getElementById("total-fine").innerText;
+        let commonAccount = document.getElementById("common-account").innerText;
+        let totalJail = document.getElementById("total-jail").innerText;
+        let totalBail = document.getElementById("total-bail").innerText;
+
+        let text = `[FiveM 스토리RP 처벌 내역서]\n`;
+        text += `- 적용 죄목: ${crimeList.join(", ")}\n`;
+        text += `- 총 벌금: ${totalFine}\n`;
+        text += `- 공통계좌 입금 (20%): ${commonAccount}\n`;
+        text += `- 총 구금 시간: ${totalJail}\n`;
+        text += `- 총 보석금: ${totalBail}`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            alert("처벌 내역(공통계좌 금액 포함)이 클립보드에 복사되었습니다!");
+        });
+    }
+
+    // 페이지 로드 시 초기화 및 렌더링
+    window.onload = renderCrimes;
+</script>
+
+</body>
+</html>
